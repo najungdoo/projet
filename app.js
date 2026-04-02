@@ -102,7 +102,9 @@ async function renderStudentsTable() {
     const target = document.getElementById(`qr-${CSS.escape(s.id)}`);
     if (target) {
       target.innerHTML = "";
-      await QRCode.toCanvas(target, qrPayload(s), {
+      const canvas = document.createElement("canvas");
+      target.appendChild(canvas);
+      await QRCode.toCanvas(canvas, qrPayload(s), {
         width: 84,
         margin: 1,
       });
