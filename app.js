@@ -73,10 +73,6 @@ function qrPayload(student) {
   return JSON.stringify({ studentId: student.id, name: student.name });
 }
 
-function qrContainerId(studentId) {
-  return `qr-${encodeURIComponent(studentId)}`;
-}
-
 async function renderStudentsTable() {
   if (!students.length) {
     studentTableWrap.innerHTML = "<p>등록된 학생이 없습니다.</p>";
@@ -85,11 +81,11 @@ async function renderStudentsTable() {
 
   const rows = students
     .map(
-      (s, idx) => `
+      (s) => `
       <tr>
         <td>${escapeHtml(s.id)}</td>
         <td>${escapeHtml(s.name)}</td>
-        <td><div id="${qrContainerId(s.id)}" class="qr-box" data-idx="${idx}"></div></td>
+        <td><div id="qr-${escapeHtml(s.id)}" class="qr-box"></div></td>
       </tr>
     `
     )
@@ -102,10 +98,8 @@ async function renderStudentsTable() {
     </table>
   `;
 
-  for (const [idx, s] of students.entries()) {
-    const target =
-      studentTableWrap.querySelector(`.qr-box[data-idx="${idx}"]`) ||
-      document.getElementById(qrContainerId(s.id));
+  for (const s of students) {
+    const target = document.getElementById(`qr-${CSS.escape(s.id)}`);
     if (target) {
       target.innerHTML = "";
       const canvas = document.createElement("canvas");
