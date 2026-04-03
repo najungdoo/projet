@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>학생 QR 출결 관리 앱</title>
     <link rel="stylesheet" href="styles.css" />
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" defer></script>
     <script src="app.js" defer></script>
   </head>
@@ -16,7 +16,13 @@
     </header>
 
     <main>
-      <section class="card">
+      <nav class="tabs">
+        <button class="tab-btn active" data-target="view-generate">1. QR 생성</button>
+        <button class="tab-btn" data-target="view-scan">2. 출결 스캔</button>
+        <button class="tab-btn" data-target="view-status">3. 출결 현황</button>
+      </nav>
+
+      <section id="view-generate" class="card tab-content active">
         <h2>1) 학생 등록 & QR 생성</h2>
         <p class="hint">
           형식: 한 줄에 한 명씩 입력. <code>학번,이름</code> 또는 <code>이름</code>만 입력 가능
@@ -25,12 +31,13 @@
         <div class="actions">
           <button id="generateBtn">QR 생성</button>
           <button id="clearStudentsBtn" class="ghost">학생 목록 초기화</button>
+          <button id="printQrBtn" class="ghost">QR 인쇄</button>
         </div>
 
         <div id="studentTableWrap" class="table-wrap"></div>
       </section>
 
-      <section class="card">
+      <section id="view-scan" class="card tab-content">
         <h2>2) QR 스캔으로 출결 체크</h2>
         <div class="actions">
           <button id="startScanBtn">스캐너 시작</button>
@@ -42,7 +49,7 @@
         <div id="scanStatus" class="status">대기 중...</div>
       </section>
 
-      <section class="card">
+      <section id="view-status" class="card tab-content">
         <h2>3) 출결 현황</h2>
         <div class="actions">
           <button id="downloadCsvBtn">CSV 다운로드</button>
