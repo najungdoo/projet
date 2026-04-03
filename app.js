@@ -1,3 +1,7 @@
+/**
+ * Created by najd on 2026.
+ * Copyright (C) 2026 najd. All rights reserved.
+ */
 const STORAGE_KEY_STUDENTS = "qr_attendance_students_v1";
 const STORAGE_KEY_ATTENDANCE = "qr_attendance_records_v1";
 
@@ -9,6 +13,7 @@ const scanStatus = document.getElementById("scanStatus");
 
 const generateBtn = document.getElementById("generateBtn");
 const clearStudentsBtn = document.getElementById("clearStudentsBtn");
+const printQrBtn = document.getElementById("printQrBtn");
 const startScanBtn = document.getElementById("startScanBtn");
 const stopScanBtn = document.getElementById("stopScanBtn");
 const resetTodayBtn = document.getElementById("resetTodayBtn");
@@ -86,6 +91,7 @@ async function renderStudentsTable() {
         <td>${escapeHtml(s.id)}</td>
         <td>${escapeHtml(s.name)}</td>
         <td><div id="qr-${escapeHtml(s.id)}" class="qr-box"></div></td>
+        <td><button class="ghost" onclick="downloadQr('${escapeHtml(s.id)}', '${escapeHtml(s.name).replace(/'/g, "\\'")}')">다운로드</button></td>
       </tr>
     `
     )
@@ -93,13 +99,13 @@ async function renderStudentsTable() {
 
   studentTableWrap.innerHTML = `
     <table>
-      <thead><tr><th>학번</th><th>이름</th><th>QR</th></tr></thead>
+      <thead><tr><th>학번</th><th>이름</th><th>QR</th><th>액션</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
   `;
 
   for (const s of students) {
-    const target = document.getElementById(`qr-${CSS.escape(s.id)}`);
+    const target = document.getElementById(`qr-${s.id}`);
     if (target) {
       target.innerHTML = "";
       const canvas = document.createElement("canvas");
@@ -267,13 +273,87 @@ generateBtn.addEventListener("click", async () => {
 });
 
 clearStudentsBtn.addEventListener("click", () => {
-  if (!confirm("학생 목록을 모두 삭제할까요?")) return;
+  if (!confirm("학생 목록을 모두 삭제할까요? 출결 데이터도 함께 초기화됩니다.")) return;
   students = [];
+  attendance = {};
   saveStudents();
+  saveAttendance();
   renderStudentsTable();
   renderAttendanceTable();
-  notify("학생 목록이 초기화되었습니다.");
+  notify("학생 목록 및 출결 현황이 초기화되었습니다.");
 });
+
+if (printQrBtn) {
+  printQrBtn.addEventListener("click", () => {
+    if (!students.length) {
+      alert("인쇄할 학생 정보가 없습니다.");
+      return;
+    }
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("팝업 차단을 해제해주세요.");
+      return;
+    }
+
+    let html = `<!DOCTYPE html>
+<html>
+<head>
+  <title>QR코드 인쇄</title>
+  <style>
+    body { font-family: "Pretendard", "Noto Sans KR", sans-serif; text-align: center; margin: 20px; }
+    .qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; }
+    .qr-container { border: 1px dashed #ccc; padding: 15px; border-radius: 8px; }
+    .qr-container img { width: 120px; height: 120px; }
+    .name { font-weight: bold; margin-top: 8px; font-size: 16px; color: #333; }
+    .id { color: #666; font-size: 14px; margin-top: 4px; }
+    .print-btn { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #2351ff; color: #fff; border: none; border-radius: 8px; margin-bottom: 20px; font-weight: bold; }
+    @media print {
+      .no-print { display: none; }
+      .qr-container { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <button class="print-btn" onclick="window.print()">🖨️ 인쇄하기</button>
+  </div>
+  <div class="qr-grid">`;
+
+    for (const s of students) {
+      const canvas = document.querySelector("#qr-" + s.id + " canvas");
+      if (canvas) {
+        const dataUrl = canvas.toDataURL("image/png");
+        html += `
+        <div class="qr-container">
+          <img src="${dataUrl}" />
+          <div class="name">${escapeHtml(s.name)}</div>
+          <div class="id">${escapeHtml(s.id)}</div>
+        </div>`;
+      }
+    }
+
+    html += `  </div>
+</body>
+</html>`;
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
+  });
+}
+
+window.downloadQr = function(id, name) {
+  const canvas = document.querySelector("#qr-" + id + " canvas");
+  if (!canvas) {
+    alert("QR 코드가 아직 생성되지 않았습니다.");
+    return;
+  }
+  const url = canvas.toDataURL("image/png");
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `QR_${name}_${id}.png`;
+  a.click();
+};
 
 startScanBtn.addEventListener("click", startScanner);
 stopScanBtn.addEventListener("click", stopScanner);
@@ -292,3 +372,26 @@ window.addEventListener("beforeunload", stopScanner);
 
 renderStudentsTable();
 renderAttendanceTable();
+
+// 탭 전환 로직
+const tabBtns = document.querySelectorAll(".tab-btn");
+const tabContents = document.querySelectorAll(".tab-content");
+
+tabBtns.forEach(btn => {
+  btn.addEventListener("click", () => {
+    // 모든 탭과 콘텐츠를 비활성화
+    tabBtns.forEach(b => b.classList.remove("active"));
+    tabContents.forEach(c => c.classList.remove("active"));
+    
+    // 클릭된 탭 활성화
+    btn.classList.add("active");
+    const targetId = btn.getAttribute("data-target");
+    document.getElementById(targetId).classList.add("active");
+
+    // 다른 탭으로 이동할 때 켜져 있는 스캐너 중지
+    if (targetId !== 'view-scan' && html5QrCode) {
+      stopScanner();
+    }
+  });
+});
+
